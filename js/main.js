@@ -1,4 +1,25 @@
-document.addEventListener("DOMContentLoaded", () => {
+
+async function loadNavbar() {
+    const container = document.getElementById("navbar-container");
+
+    if (!container) return;
+
+    try {
+        const response = await fetch("/navbar.html");
+
+        if (!response.ok) {
+            throw new Error(`Failed to load navbar: ${response.status}`);
+        }
+
+        container.innerHTML = await response.text();
+
+        initialiseNavbar();
+    } catch (error) {
+        console.error("Failed to load navbar:", error);
+    }
+}
+
+function initialiseNavbar() {
 
     /*
         MAIN NAVBAR DROPDOWN
@@ -11,35 +32,22 @@ document.addEventListener("DOMContentLoaded", () => {
     if (dropdown && button && menu) {
 
         button.addEventListener("click", (e) => {
-
             e.stopPropagation();
-
             dropdown.classList.toggle("active");
-
         });
 
         document.addEventListener("click", (e) => {
-
             if (!dropdown.contains(e.target)) {
-
                 dropdown.classList.remove("active");
-
             }
-
         });
 
         menu.addEventListener("click", (e) => {
-
             e.stopPropagation();
-
         });
-
 
         /*
             FEATURES SUBMENU
-
-            Hovering over "Features" opens the
-            submenu to the right.
         */
 
         const featuresItems =
@@ -53,21 +61,15 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!featuresMenu) return;
 
             featuresItem.addEventListener("mouseenter", () => {
-
                 featuresItem.classList.add("active");
-
             });
 
             featuresItem.addEventListener("mouseleave", () => {
-
                 featuresItem.classList.remove("active");
-
             });
 
         });
-
     }
-
 
     /*
         NAVBAR SCROLL EFFECT
@@ -77,55 +79,50 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (navbar) {
 
-        window.addEventListener("scroll", () => {
+        const updateNavbar = () => {
 
             if (window.scrollY > 15) {
-
                 navbar.style.background = "rgba(11,15,22,.90)";
                 navbar.style.boxShadow =
                     "0 10px 35px rgba(0,0,0,.35)";
-
             } else {
-
                 navbar.style.background = "rgba(11,15,22,.65)";
                 navbar.style.boxShadow = "none";
-
             }
 
-        });
+        };
 
+        window.addEventListener("scroll", updateNavbar);
+        updateNavbar();
     }
-
 
     /*
         FEATURE CARD ANIMATIONS
     */
 
-    const observer = new IntersectionObserver((entries) => {
+    if ("IntersectionObserver" in window) {
 
-        entries.forEach(entry => {
+        const observer = new IntersectionObserver((entries) => {
 
-            if (entry.isIntersecting) {
+            entries.forEach(entry => {
 
-                entry.target.classList.add("visible");
+                if (entry.isIntersecting) {
+                    entry.target.classList.add("visible");
+                    observer.unobserve(entry.target);
+                }
 
-            }
+            });
 
+        }, {
+            threshold: 0.15
         });
 
-    }, {
-        threshold: 0.15
-    });
+        document.querySelectorAll(".feature-card").forEach(card => {
+            card.classList.add("hidden");
+            observer.observe(card);
+        });
 
-
-    document.querySelectorAll(".feature-card").forEach(card => {
-
-        card.classList.add("hidden");
-
-        observer.observe(card);
-
-    });
-
+    }
 
     /*
         SMOOTH ANCHOR SCROLLING
@@ -135,24 +132,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
         anchor.addEventListener("click", function (e) {
 
-            e.preventDefault();
+            const href = this.getAttribute("href");
 
-            const target = document.querySelector(
-                this.getAttribute("href")
-            );
+            if (!href || href === "#") return;
+
+            const target = document.querySelector(href);
 
             if (target) {
+                e.preventDefault();
 
                 target.scrollIntoView({
                     behavior: "smooth"
                 });
-
             }
 
         });
 
     });
-
 
     /*
         ESCAPE KEY
@@ -163,31 +159,24 @@ document.addEventListener("DOMContentLoaded", () => {
         if (e.key === "Escape") {
 
             if (dropdown) {
-
                 dropdown.classList.remove("active");
-
             }
 
             document
                 .querySelectorAll(".features-dropdown")
                 .forEach(item => {
-
                     item.classList.remove("active");
-
                 });
 
         }
 
     });
 
-
     /*
         ACTIVE DROPDOWN LINK
     */
 
-    const current =
-        window.location.pathname.replace(/\/$/, "");
-
+    const current = window.location.pathname.replace(/\/$/, "");
 
     document.querySelectorAll(".dropdown-menu a").forEach(link => {
 
@@ -195,28 +184,37 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (!href) return;
 
-        const normalizedHref =
-            href.replace(/\/$/, "");
+        let linkUrl;
+
+        try {
+            linkUrl = new URL(href, window.location.origin);
+        } catch {
+            return;
+        }
+
+        if (linkUrl.origin !== window.location.origin) return;
+
+        const normalizedHref = linkUrl.pathname.replace(/\/$/, "");
 
         if (normalizedHref === current) {
-
             link.classList.add("active-link");
-
         }
 
     });
-
 
     /*
         PAGE LOAD
     */
 
-    window.addEventListener("load", () => {
-
+    const markLoaded = () => {
         document.body.classList.add("loaded");
+    };
 
-    });
-
+    if (document.readyState === "complete") {
+        markLoaded();
+    } else {
+        window.addEventListener("load", markLoaded, { once: true });
+    }
 
     /*
         JOIN LOG MODAL
@@ -230,7 +228,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const closeJoinLogButtons =
         document.querySelectorAll("[data-close-join-log]");
-
 
     if (joinLogExample && joinLogModal) {
 
@@ -247,7 +244,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         };
 
-
         const closeJoinLog = () => {
 
             joinLogModal.classList.remove("active");
@@ -261,52 +257,46 @@ document.addEventListener("DOMContentLoaded", () => {
 
         };
 
+        joinLogExample.addEventListener("click", openJoinLog);
 
-        joinLogExample.addEventListener(
-            "click",
-            openJoinLog
-        );
+        joinLogExample.addEventListener("keydown", (e) => {
 
-
-        joinLogExample.addEventListener(
-            "keydown",
-            (e) => {
-
-                if (e.key === "Enter" || e.key === " ") {
-
-                    e.preventDefault();
-
-                    openJoinLog();
-
-                }
-
+            if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openJoinLog();
             }
-        );
-
-
-        closeJoinLogButtons.forEach(button => {
-
-            button.addEventListener(
-                "click",
-                closeJoinLog
-            );
 
         });
 
+        closeJoinLogButtons.forEach(button => {
+            button.addEventListener("click", closeJoinLog);
+        });
 
-        document.addEventListener(
-            "keydown",
-            (e) => {
+        document.addEventListener("keydown", (e) => {
 
-                if (e.key === "Escape") {
-
-                    closeJoinLog();
-
-                }
-
+            if (e.key === "Escape") {
+                closeJoinLog();
             }
-        );
+
+        });
+
+        // Close the modal when clicking its backdrop.
+        joinLogModal.addEventListener("click", (e) => {
+
+            if (e.target === joinLogModal) {
+                closeJoinLog();
+            }
+
+        });
 
     }
 
+}
+
+/*
+    INITIALISE THE WEBSITE
+*/
+
+document.addEventListener("DOMContentLoaded", () => {
+    loadNavbar();
 });
